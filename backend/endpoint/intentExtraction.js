@@ -3,9 +3,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-console.log("=== GROQ CONFIG ===");
-console.log("API Key loaded:", !!process.env.GROQ_API_KEY);
-console.log("===================");
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
@@ -53,7 +50,7 @@ Return ONLY JSON.
       });
 
       const generated = response.choices[0].message.content;
-      console.log(`✅ ${model} SUCCESS! Output:`, generated);
+      //console.log(`${model} SUCCESS! Output:`, generated);
 
       // Parse the JSON
       let jsonStr = generated.trim();
@@ -67,7 +64,7 @@ Return ONLY JSON.
       
       const intent = JSON.parse(jsonStr);
       
-      // FIX: Convert interests format if needed
+      // if interests are missing type and constraint_type, convert strings to objects
       if (Array.isArray(intent.interests)) {
         intent.interests = intent.interests.map(item => {
           if (typeof item === 'string') {
@@ -80,12 +77,12 @@ Return ONLY JSON.
         });
       }
       
-      // Validate structure
+      // if fields are missing, set defaults
       if (!intent.budget) intent.budget = { max: null, constraint_type: null };
       if (!intent.connectivity) intent.connectivity = { value: null, constraint_type: null };
       if (!intent.interests) intent.interests = [];
       
-      console.log("Parsed intent:", JSON.stringify(intent, null, 2));
+      
       
       req.body = intent;
       return next();

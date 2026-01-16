@@ -3,7 +3,7 @@ import cors from 'cors';
 import {extractIntent} from './endpoint/intentExtraction.js';
 import {getUnifiedResult} from './endpoint/getUnifiedResult.js';
 import dotenv from 'dotenv';
-dotenv.config();
+
 
 const app = express();
 
