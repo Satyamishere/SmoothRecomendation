@@ -33,7 +33,7 @@ Return ONLY JSON.
 
   for (const model of WORKING_MODELS) {
     try {
-      console.log(`🤖 Trying model: ${model}`);
+      console.log(`Trying model: ${model}`);
       
       const response = await groq.chat.completions.create({
         model: model,
