@@ -19,18 +19,14 @@ export function getUnifiedResult(req, res) {
         flight.price +
         hotel.pricePerNight * intent.duration_days;
 
-      // FIX: Convert budget from dollars to cents for comparison
-      const budgetMaxInCents = intent.budget?.max ? intent.budget.max * 100 : null;
-
-      console.log(`Checking: Flight ${flight.airline} (${flight.price}¢) + Hotel ${hotel.name} (${hotel.pricePerNight}¢ x ${intent.duration_days}) = ${totalCost}¢`);
-      console.log(`Budget: ${budgetMaxInCents}¢ (${intent.budget?.max}$)`);
+      
 
       if (
         intent.budget?.constraint_type === "hard" &&
         budgetMaxInCents &&
         totalCost > budgetMaxInCents
       ) {
-        console.log(`❌ Filtered out: ${totalCost}¢ > ${budgetMaxInCents}¢`);
+        console.log(`Filtered out: ${totalCost}¢ > ${budgetMaxInCents}¢`);
         continue;
       }
 
@@ -59,12 +55,12 @@ export function getUnifiedResult(req, res) {
         if (!match) score -= 10;
       });
 
-      /* ---- SELECT ACTIVITIES ---- */
+      
       const selectedActivities = activities.filter(a =>
         intent.interests?.some(i => a.tags.includes(i.type))
       );
 
-      console.log(`✅ Added: Score ${score}, Activities: ${selectedActivities.length}`);
+     
 
       results.push({
         flight,
