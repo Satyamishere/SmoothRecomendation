@@ -1,0 +1,46 @@
+.typing-indicator {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.typing-avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6366F1, #8B5CF6);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.typing-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 0.375rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background: #6366F1;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.typing-text {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 0 0.5rem;
+}

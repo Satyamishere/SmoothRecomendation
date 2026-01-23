@@ -1,0 +1,310 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* --- BACKGROUND ANIMATION --- */
+.animated-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: var(--bg-dark);
+}
+
+.gradient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  mix-blend-mode: screen;
+  will-change: transform;
+}
+
+.orb-1 {
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, #4c1d95 0%, transparent 70%);
+  top: -20%;
+  left: -10%;
+  animation: float-slow 25s infinite alternate;
+}
+
+.orb-2 {
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, #be185d 0%, transparent 70%);
+  bottom: -10%;
+  right: -10%;
+  animation: float-medium 20s infinite alternate-reverse;
+}
+
+.orb-3 {
+  width: 30vw;
+  height: 30vw;
+  background: radial-gradient(circle, #0e7490 0%, transparent 70%);
+  top: 40%;
+  left: 40%;
+  animation: float-fast 15s infinite ease-in-out;
+}
+
+@keyframes float-slow {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(50px, 50px) rotate(10deg); }
+}
+
+@keyframes float-medium {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-30px, 20px) scale(1.1); }
+}
+
+@keyframes float-fast {
+  0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.6; }
+  50% { transform: translate(-40%, -60%) scale(1.2); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.6; }
+}
+
+/* --- HEADER --- */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  /* Glass effect handled by inline style or utility in JSX, but here's fallback */
+  background: rgba(3, 0, 20, 0.7);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.logo-container {
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+.logo-container:hover {
+  opacity: 0.9;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  color: #fff;
+  /* Glowing Icon */
+  filter: drop-shadow(0 0 8px var(--primary));
+  animation: pulse-glow 3s infinite;
+}
+
+.logo-text {
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  /* -webkit-text-fill-color: transparent; */
+  background-clip: text;
+  letter-spacing: -1px;
+}
+
+.tagline {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-left: 3rem;
+  margin-top: -5px;
+}
+
+.header-stats {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.3s ease;
+}
+
+.stat:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  color: white;
+}
+
+.stat-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+}
+
+/* --- MAIN LAYOUT --- */
+.app-main {
+  flex: 1;
+  position: relative;
+  z-index: 10;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: center;
+  /* Prevent scrolling on main body, let containers scroll */
+  height: calc(100vh - 80px); 
+  overflow: hidden;
+}
+
+.chat-container {
+  width: 100%;
+  max-width: 1600px;
+  height: 100%;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-light);
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-layout {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Chat Section (Left/Top) */
+.chat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-light);
+  min-width: 0; /* Important for flex text wrapping */
+  transition: width 0.3s ease;
+}
+
+/* Trip Section (Right/Bottom) */
+.trip-section {
+  width: 450px;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--border-light);
+}
+
+/* Footer */
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  z-index: 40;
+  text-align: center;
+  padding: 0.75rem;
+  background: linear-gradient(to top, var(--bg-dark), transparent);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  pointer-events: none; /* Let clicks pass through */
+}
+
+@keyframes pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 5px var(--primary)); }
+  50% { filter: drop-shadow(0 0 15px var(--secondary)); }
+}
+
+/* --- RESPONSIVE DESIGN --- */
+
+/* Tablet & Small Laptop */
+@media (max-width: 1024px) {
+  .app-main {
+    padding: 1rem;
+    height: auto;
+    min-height: calc(100vh - 80px);
+    overflow-y: auto;
+  }
+  
+  .chat-container {
+    height: 85vh;
+  }
+
+  .trip-section {
+    width: 380px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+    background: rgba(3, 0, 20, 0.95);
+  }
+
+  .header-stats {
+    display: none; /* Hide stats on mobile to save space */
+  }
+
+  .app-main {
+    padding: 0.5rem;
+    height: auto;
+    display: block; /* Stack normally */
+  }
+
+  .chat-container {
+    height: calc(100vh - 140px); /* Adjust for header */
+    border-radius: 16px;
+  }
+
+  .chat-layout {
+    flex-direction: column;
+    position: relative;
+  }
+
+  .chat-section {
+    border-right: none;
+    height: 100%;
+    width: 100%;
+  }
+
+  /* Trip section becomes an overlay or stacked card on mobile */
+  .trip-section {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 20;
+    background: var(--bg-dark);
+    transform: translateX(100%); /* Hidden by default if we want toggle */
+    /* Note: In this specific implementation, we might want to toggle it.
+       If simple stacking is preferred: */
+    position: relative;
+    width: 100%;
+    height: 50%;
+    flex: none;
+    border-left: none;
+    border-top: 1px solid var(--border-light);
+    display: none; /* Hidden until generated, handled by React conditional usually */
+  }
+  
+  /* Helper to show trip on mobile if it exists */
+  .trip-section:not(:empty) {
+     display: flex; 
+  }
+}
