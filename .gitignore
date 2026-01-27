@@ -1,5 +1,6 @@
-# Dependency directories
+# Dependencies
 node_modules/
+package-lock.json
 
 # Logs
 *.log
@@ -9,27 +10,16 @@ yarn-error.log*
 
 # Environment variables
 .env
-
-# Coverage directory
-coverage
-.nyc_output
-
-# Cache directories
-.npm
-.eslintcache
+.env.local
+.env*.local
 
 # OS generated files
 .DS_Store
 Thumbs.db
-ehthumbs.db
-Desktop.ini
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+.vscode/
+.idea/
+.vs/
 *.suo
-*.ntvs*
-*.njsproj
-*.sln
 *.sw?
