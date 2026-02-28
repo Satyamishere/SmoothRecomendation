@@ -8,6 +8,9 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // base URL for backend; Vite exposes env vars prefixed with VITE_
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   const handleSearch = async () => {
     if (!query.trim()) return;
     setLoading(true);
@@ -15,7 +18,7 @@ function App() {
     setResults(null);
 
     try {
-      const response = await fetch('http://localhost:5000/getHolidayOptions', {
+      const response = await fetch(`${API_URL}/getHolidayOptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: query })
@@ -29,7 +32,7 @@ function App() {
         setError("No trips found matching your criteria. Try adjusting your budget or preferences!");
       }
     } catch (err) {
-      setError("Unable to connect to the backend. Please ensure the server is running on port 5000.");
+      setError(`Unable to connect to backend at ${API_URL}. Make sure the service is running and CORS is configured.`);
       console.error(err);
     } finally {
       setLoading(false);
