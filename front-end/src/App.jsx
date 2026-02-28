@@ -213,9 +213,9 @@ function App() {
                   {/* Activities */}
                   {trip.activities && trip.activities.length > 0 && (
                     <div className="activities-section">
-                      <p className="activities-label">Included Activities:</p>
+                      <p className="activities-label">Suggested Activities</p>
                       <div className="activities-tags">
-                        {trip.activities.slice(0, 3).map((act, i) => (
+                        {trip.activities.slice(0, 4).map((act, i) => (
                           <span key={i} className="activity-tag">
                             {act.name || act}
                           </span>

@@ -56,7 +56,9 @@ async function searchFlights(intent) {
   console.log('🔎 searchFlights called with intent', intent);
 
   if (!intent?.origin || !intent?.destination) {
-    console.error('❌ Missing origin or destination');
+    console.warn('Missing origin or destination in intent. Returning empty array to trigger fallback.');
+    // The caller (getUnifiedResult) will detect an empty response and
+    // replace it with mock data, allowing the pipeline to continue.
     return [];
   }
 
