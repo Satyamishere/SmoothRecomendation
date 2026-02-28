@@ -1,7 +1,159 @@
 // endpoint/getUnifiedResult.js
-import { flights, hotels, activities } from '../mockData/mockdata.js';
+import { hotels, activities, flights as mockFlights } from '../mockData/mockdata.js';
+import { searchFlights } from '../services/tektravelsService.js';
 
-export function getUnifiedResult(req, res) {
+/**
+ * STEP 1: Compute normalized weights from user intent
+ * Maps constraint types to priorities and normalizes them
+ */
+function computeWeights(intent) {
+  const priorities = {
+    budget: 0,
+    connectivity: 0,
+    activity: 0,
+    flight: 1, // Default priority for flight
+    hotel: 1   // Default priority for hotel
+  };
+
+  // Map constraint types to priority values
+  const constraintMap = {
+    'hard': 3,
+    'optimize': 2,
+    'soft': 1,
+    null: 0,
+    undefined: 0
+  };
+
+  // Extract priorities from intent
+  if (intent.budget) {
+    priorities.budget = constraintMap[intent.budget.constraint_type] || 0;
+  }
+
+  if (intent.connectivity) {
+    priorities.connectivity = constraintMap[intent.connectivity.constraint_type] || 0;
+  }
+
+  if (intent.interests && intent.interests.length > 0) {
+    // Use the max constraint type priority from interests
+    const maxInterestPriority = Math.max(
+      ...intent.interests.map(i => constraintMap[i.constraint_type] || 0)
+    );
+    priorities.activity = maxInterestPriority;
+  }
+
+  // Calculate total priority
+  const totalPriority = Object.values(priorities).reduce((sum, p) => sum + p, 0);
+
+  // Normalize weights
+  let weights = {};
+  if (totalPriority === 0) {
+    // Assign equal weights if all priorities are 0
+    const equalWeight = 1 / 5;
+    weights = {
+      budget: equalWeight,
+      flight: equalWeight,
+      hotel: equalWeight,
+      connectivity: equalWeight,
+      activity: equalWeight
+    };
+  } else {
+    // Normalize to sum to 1
+    weights = {
+      budget: priorities.budget / totalPriority,
+      flight: priorities.flight / totalPriority,
+      hotel: priorities.hotel / totalPriority,
+      connectivity: priorities.connectivity / totalPriority,
+      activity: priorities.activity / totalPriority
+    };
+  }
+
+  console.log("📊 Computed weights:", {
+    priorities,
+    totalPriority,
+    weights,
+    sum: Object.values(weights).reduce((sum, w) => sum + w, 0)
+  });
+
+  return weights;
+}
+
+/**
+ * STEP 2: Compute budget score (0-100 scale)
+ */
+function computeBudgetScore(totalCost, maxBudget) {
+  if (!maxBudget) {
+    return 50; // Neutral score if no budget specified
+  }
+
+  const budgetScore = 100 - (totalCost / maxBudget) * 100;
+  return Math.max(0, Math.min(100, budgetScore)); // Clamp to 0-100
+}
+
+/**
+ * STEP 2: Compute flight score (0-100 scale)
+ */
+function computeFlightScore(flight) {
+  let score = 0;
+
+  // Base score based on stops
+  if (flight.stops === 0) {
+    score = 100;
+  } else if (flight.stops === 1) {
+    score = 60;
+  } else if (flight.stops === 2) {
+    score = 30;
+  } else {
+    score = 0; // 3+ stops
+  }
+
+  // Optional: Adjust for flight timing (-10 to -20 max)
+  const flightHour = parseInt(flight.time.split(':')[0]);
+  if (flightHour >= 21 || flightHour <= 5) {
+    score -= 15; // Bad timing penalty
+  }
+
+  return Math.max(0, Math.min(100, score)); // Clamp to 0-100
+}
+
+/**
+ * STEP 2: Compute hotel score (0-100 scale)
+ */
+function computeHotelScore(hotel) {
+  const score = (hotel.rating / 5) * 100;
+  return Math.max(0, Math.min(100, score)); // Clamp to 0-100
+}
+
+/**
+ * STEP 2: Compute connectivity score (0-100 scale)
+ */
+function computeConnectivityScore(hotel, connectivity) {
+  if (!connectivity) {
+    return 50; // Neutral if not specified
+  }
+
+  if (connectivity.value === "nearMetro" && hotel.nearMetro) {
+    return 100;
+  } else if (connectivity.value === "nearMetro") {
+    return 30; // Penalty for not having metro access
+  }
+
+  return 50; // Neutral otherwise
+}
+
+/**
+ * STEP 2: Compute activity score (0-100 scale)
+ */
+function computeActivityScore(matchedActivities, requestedInterests) {
+  if (!requestedInterests || requestedInterests.length === 0) {
+    return 50; // Neutral score if no interests specified
+  }
+
+  const matchRatio = matchedActivities.length / requestedInterests.length;
+  const score = matchRatio * 100;
+  return Math.max(0, Math.min(100, score)); // Clamp to 0-100
+}
+
+export async function getUnifiedResult(req, res) {
   const intent = req.body;
   const results = [];
 
@@ -10,7 +162,22 @@ export function getUnifiedResult(req, res) {
   
   console.log("📊 Processing intent:", JSON.stringify(intent, null, 2));
 
-  // STEP 1: Generate all possible trip combinations
+  // STEP 1: Compute normalized weights from intent
+  const weights = computeWeights(intent);
+
+  // fetch flights from TekTravels (with fallback to mock data)
+  let flights;
+  try {
+    flights = await searchFlights(intent);
+    if (!flights || flights.length === 0) {
+      throw new Error('no flights returned');
+    }
+  } catch (error) {
+    console.error("Flight API failed, falling back to mock data", error.message);
+    flights = mockFlights;
+  }
+
+  // STEP 2: Generate all possible trip combinations
   for (const flight of flights) {
     for (const hotel of hotels) {
       
@@ -18,7 +185,7 @@ export function getUnifiedResult(req, res) {
       const hotelCost = hotel.pricePerNight * duration;
       let totalCost = flight.price + hotelCost;
       
-      // STEP 2: Match activities based on user interests
+      // Match activities based on user interests
       let matchedActivities = [];
       let activityCost = 0;
       
@@ -51,7 +218,8 @@ export function getUnifiedResult(req, res) {
         totalCost += activityCost;
       }
       
-      // STEP 3: Apply HARD budget constraint (filter out expensive options)
+      // STEP 3: Apply HARD constraints (filter out violating options)
+      // Hard constraint filtering happens BEFORE scoring
       if (
         intent.budget?.constraint_type === "hard" && 
         intent.budget?.max && 
@@ -61,176 +229,32 @@ export function getUnifiedResult(req, res) {
         continue; // Skip this combination - exceeds hard budget
       }
 
-      // STEP 4: Smart Ranking Engine - Calculate Match Score (Start from 50 for realistic distribution)
-      let score = 50;
-      let scoreBreakdown = {
-        base: 50,
-        adjustments: []
-      };
-
-      // A) Budget Optimization (Most Important Factor - up to ±30 points)
-      if (intent.budget?.max) {
-        const budgetUsage = (totalCost / intent.budget.max) * 100;
-        
-        if (intent.budget.constraint_type === "optimize") {
-          // Reward cheaper options significantly
-          const budgetScore = Math.max(0, (100 - budgetUsage) * 0.4);
-          score += budgetScore;
-          scoreBreakdown.adjustments.push({
-            factor: "Budget Optimization",
-            impact: `+${budgetScore.toFixed(1)}`,
-            reason: `Using only ${budgetUsage.toFixed(0)}% of budget`
-          });
-        } else if (budgetUsage > 95) {
-          // Very close to budget limit - penalty
-          const budgetPenalty = (budgetUsage - 95) * 2;
-          score -= budgetPenalty;
-          scoreBreakdown.adjustments.push({
-            factor: "Budget Stretch",
-            impact: `-${budgetPenalty.toFixed(1)}`,
-            reason: `${budgetUsage.toFixed(0)}% of budget used`
-          });
-        } else if (budgetUsage < 70) {
-          // Well within budget - bonus
-          const budgetBonus = (70 - budgetUsage) * 0.3;
-          score += budgetBonus;
-          scoreBreakdown.adjustments.push({
-            factor: "Budget Comfort",
-            impact: `+${budgetBonus.toFixed(1)}`,
-            reason: `Only ${budgetUsage.toFixed(0)}% of budget used`
-          });
-        }
-      } else {
-        // No budget specified - favor mid-range options
-        if (totalCost < 15000) {
-          score += 10;
-          scoreBreakdown.adjustments.push({
-            factor: "Value Option",
-            impact: "+10",
-            reason: "Affordable pricing"
-          });
-        } else if (totalCost > 40000) {
-          score -= 15;
-          scoreBreakdown.adjustments.push({
-            factor: "Premium Pricing",
-            impact: "-15",
-            reason: "High-end option"
-          });
-        }
+      if (intent.connectivity?.constraint_type === "hard" && 
+          intent.connectivity?.value === "nearMetro" && 
+          !hotel.nearMetro) {
+        console.log(`❌ Filtered out: ${hotel.name} - no metro access (hard constraint)`);
+        continue; // Skip this combination - violates hard connectivity constraint
       }
 
-      // B) Flight Convenience Score (up to ±18 points)
-      if (flight.stops === 0) {
-        score += 18;
-        scoreBreakdown.adjustments.push({
-          factor: "Direct Flight",
-          impact: "+18",
-          reason: "Non-stop convenience"
-        });
-      } else {
-        const stopsPenalty = flight.stops * 15;
-        score -= stopsPenalty;
-        scoreBreakdown.adjustments.push({
-          factor: "Flight Stops",
-          impact: `-${stopsPenalty}`,
-          reason: `${flight.stops} layover(s)`
-        });
-      }
+      // STEP 4: Compute normalized component scores (0-100 scale)
+      const budgetScore = computeBudgetScore(totalCost, intent.budget?.max);
+      const flightScore = computeFlightScore(flight);
+      const hotelScore = computeHotelScore(hotel);
+      const connectivityScore = computeConnectivityScore(hotel, intent.connectivity);
+      const activityScore = computeActivityScore(matchedActivities, intent.interests);
 
-      // C) Connectivity Preference (up to ±25 points)
-      if (intent.connectivity?.value === "nearMetro") {
-        if (hotel.nearMetro) {
-          const connectivityBonus = intent.connectivity.constraint_type === "hard" ? 25 : 15;
-          score += connectivityBonus;
-          scoreBreakdown.adjustments.push({
-            factor: "Metro Access",
-            impact: `+${connectivityBonus}`,
-            reason: "Hotel near metro station"
-          });
-        } else if (intent.connectivity.constraint_type === "hard") {
-          // Hard constraint violated - skip this option
-          console.log(`❌ Filtered out: ${hotel.name} - no metro access (hard constraint)`);
-          continue;
-        } else {
-          // Soft constraint - significant penalty
-          score -= 20;
-          scoreBreakdown.adjustments.push({
-            factor: "Metro Access",
-            impact: "-20",
-            reason: "No nearby metro access"
-          });
-        }
-      }
+      // STEP 5: Compute final weighted score
+      const finalScore = 
+        weights.budget * budgetScore +
+        weights.flight * flightScore +
+        weights.hotel * hotelScore +
+        weights.connectivity * connectivityScore +
+        weights.activity * activityScore;
 
-      // D) Hotel Rating Quality (up to +15 points)
-      const ratingBonus = (hotel.rating - 4.0) * 15;
-      score += ratingBonus;
-      scoreBreakdown.adjustments.push({
-        factor: "Hotel Quality",
-        impact: ratingBonus >= 0 ? `+${ratingBonus.toFixed(1)}` : `${ratingBonus.toFixed(1)}`,
-        reason: `${hotel.rating}★ rated property`
-      });
+      // Round and clamp to 40-95 range for UI display
+      const displayScore = Math.max(40, Math.min(95, Math.round(finalScore)));
 
-      // E) Activity Match Score (up to +20 points)
-      if (intent.interests && intent.interests.length > 0) {
-        const matchPercentage = (matchedActivities.length / intent.interests.length) * 100;
-        const activityBonus = Math.min(20, matchPercentage * 0.2);
-        score += activityBonus;
-        scoreBreakdown.adjustments.push({
-          factor: "Interest Matching",
-          impact: `+${activityBonus.toFixed(1)}`,
-          reason: `${matchedActivities.length} activities match your interests`
-        });
-      } else {
-        // No interests specified - small bonus for variety
-        score += 5;
-        scoreBreakdown.adjustments.push({
-          factor: "Activity Variety",
-          impact: "+5",
-          reason: "Curated activity selection"
-        });
-      }
-
-      // F) Value for Money Score (balance between cost and quality)
-      const valueRatio = (hotel.rating * 20) / (totalCost / 1000);
-      if (valueRatio > 1.2) {
-        score += 8;
-        scoreBreakdown.adjustments.push({
-          factor: "Great Value",
-          impact: "+8",
-          reason: "Excellent quality-to-price ratio"
-        });
-      } else if (valueRatio < 0.6) {
-        score -= 8;
-        scoreBreakdown.adjustments.push({
-          factor: "Value Concern",
-          impact: "-8",
-          reason: "Premium pricing for quality offered"
-        });
-      }
-
-      // G) Flight Timing Preference (small bonus for convenient times)
-      const flightHour = parseInt(flight.time.split(':')[0]);
-      if (flightHour >= 6 && flightHour <= 10) {
-        score += 5;
-        scoreBreakdown.adjustments.push({
-          factor: "Morning Flight",
-          impact: "+5",
-          reason: "Convenient departure time"
-        });
-      } else if (flightHour >= 21 || flightHour <= 5) {
-        score -= 5;
-        scoreBreakdown.adjustments.push({
-          factor: "Late/Early Flight",
-          impact: "-5",
-          reason: "Inconvenient departure time"
-        });
-      }
-
-      // Normalize score to 40-95 range (more realistic distribution)
-      score = Math.max(40, Math.min(95, Math.round(score)));
-
-      // STEP 5: Build result object with transparency
+      // STEP 6: Build explainable result object
       results.push({
         id: `trip_${flight.airline.replace(/\s+/g, '')}_${hotel.name.replace(/\s+/g, '')}_${Date.now()}`,
         destination: intent.destination || "Your Destination",
@@ -241,8 +265,18 @@ export function getUnifiedResult(req, res) {
           hotel: hotelCost,
           activities: activityCost
         },
-        score: score, // Match percentage shown to user (40-95 range)
-        scoreBreakdown: scoreBreakdown, // Transparent explanation
+        score: displayScore, // Match percentage shown to user (40-95 range)
+        scoreBreakdown: {
+          weights: weights,
+          componentScores: {
+            budgetScore: Math.round(budgetScore * 100) / 100,
+            flightScore: Math.round(flightScore * 100) / 100,
+            hotelScore: Math.round(hotelScore * 100) / 100,
+            connectivityScore: Math.round(connectivityScore * 100) / 100,
+            activityScore: Math.round(activityScore * 100) / 100
+          },
+          rawScore: Math.round(finalScore * 100) / 100
+        },
         flight: {
           airline: flight.airline,
           price: flight.price,
@@ -265,7 +299,7 @@ export function getUnifiedResult(req, res) {
     }
   }
 
-  // STEP 6: Sort by match score (highest first) - Smart Ranking
+  // STEP 7: Sort by final score (highest first)
   results.sort((a, b) => b.score - a.score);
 
   console.log(`\n✅ Generated ${results.length} trip options`);

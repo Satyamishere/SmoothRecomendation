@@ -125,44 +125,6 @@ Return ONLY valid JSON.
       if (!intent.connectivity) intent.connectivity = { value: null, constraint_type: null };
       if (!intent.interests) intent.interests = [];
       if (!intent.duration_days) intent.duration_days = 3;
-
-      // simple regex to capture origin city and departure date
-      const textLower = text.toLowerCase();
-      const fromMatch = textLower.match(/from\s+([A-Za-z]+)/i);
-      const toMatch = textLower.match(/to\s+([A-Za-z]+)/i);
-      if (fromMatch) intent.origin = fromMatch[1];
-      if (toMatch) intent.destination = toMatch[1]; // override if NLP missed
-      
-      // map common city names to IATA codes and uppercase everything
-      const iataMap = {
-        delhi: 'DEL',
-        mumbai: 'BOM',
-        bangalore: 'BLR',
-        bengaluru: 'BLR',
-        chennai: 'MAA',
-        hyderabad: 'HYD',
-        kolkata: 'CCU',
-        jaipur: 'JAI',
-        goa: 'GOI'
-      };
-      if (intent.origin) {
-        const key = intent.origin.toLowerCase();
-        intent.origin = iataMap[key] || intent.origin.toUpperCase();
-      }
-      if (intent.destination) {
-        const key = intent.destination.toLowerCase();
-        intent.destination = iataMap[key] || intent.destination.toUpperCase();
-      }
-
-      const dateMatch = textLower.match(/on\s+(\d{1,2})\s+([A-Za-z]+)/i);
-      if (dateMatch) {
-        // construct simple YYYY-MM-DD using month name and year from today
-        const day = dateMatch[1].padStart(2, '0');
-        const monthName = dateMatch[2];
-        const monthIndex = new Date(`${monthName} 1, 2000`).getMonth() + 1;
-        const year = new Date().getFullYear();
-        intent.departure_date = `${year}-${monthIndex.toString().padStart(2,'0')}-${day}`;
-      }
       
       console.log(`✅ Extracted Intent:`, JSON.stringify(intent, null, 2));
       
