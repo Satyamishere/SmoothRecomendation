@@ -107,7 +107,8 @@ function computeFlightScore(flight) {
   }
 
   // Optional: Adjust for flight timing (-10 to -20 max)
-  const flightHour = parseInt(flight.time.split(':')[0]);
+  // handle missing time gracefully
+  const flightHour = parseInt((flight.time || '').split(':')[0]) || 0;
   if (flightHour >= 21 || flightHour <= 5) {
     score -= 15; // Bad timing penalty
   }

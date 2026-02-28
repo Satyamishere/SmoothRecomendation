@@ -137,6 +137,7 @@ Return ONLY valid JSON.
       const iataMap = {
         delhi: 'DEL',
         mumbai: 'BOM',
+        mumbay: 'BOM',            // common misspelling
         bangalore: 'BLR',
         bengaluru: 'BLR',
         chennai: 'MAA',
