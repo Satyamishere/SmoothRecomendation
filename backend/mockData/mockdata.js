@@ -1,5 +1,6 @@
 // mockData/mockdata.js
-import { getEmbedding } from "../oneTimeCallFunctions/getembedding";
+
+
 export const flights = [
   { 
     airline: "IndiGo", 
@@ -41,6 +42,7 @@ export const flights = [
 export const hotels = [
   { 
     name: "Beachside Hostel", 
+    city: "goa",
     pricePerNight: 1200, 
     nearMetro: true, 
     rating: 4.2,
@@ -49,6 +51,7 @@ export const hotels = [
   },
   { 
     name: "Urban Stay Inn", 
+    city: "mumbai",
     pricePerNight: 3500, 
     nearMetro: true, 
     rating: 4.5,
@@ -57,6 +60,7 @@ export const hotels = [
   },
   { 
     name: "Luxury Palms Resort", 
+    city: "goa",
     pricePerNight: 15000, 
     nearMetro: false, 
     rating: 5.0,
@@ -65,6 +69,7 @@ export const hotels = [
   },
   { 
     name: "Coastal Comfort Hotel", 
+    city: "kerala",
     pricePerNight: 5500, 
     nearMetro: false, 
     rating: 4.3,
@@ -73,6 +78,7 @@ export const hotels = [
   },
   { 
     name: "Budget Traveler's Inn", 
+    city: "delhi",
     pricePerNight: 1800, 
     nearMetro: true, 
     rating: 3.8,
@@ -81,16 +87,53 @@ export const hotels = [
   },
   { 
     name: "Heritage Bay Resort", 
+    city: "jaipur",
     pricePerNight: 8500, 
     nearMetro: false, 
     rating: 4.7,
     amenities: ["WiFi", "Breakfast", "Pool", "Restaurant", "Cultural Tours"],
     image: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=800&q=80" 
+  },
+  { 
+    name: "Ladakh Mountain Retreat", 
+    city: "ladakh",
+    pricePerNight: 4200, 
+    nearMetro: false, 
+    rating: 4.8,
+    amenities: ["WiFi", "Breakfast", "Heater", "Mountain View", "Bonfire"],
+    image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80" 
+  },
+  { 
+    name: "Agra Taj View Hotel", 
+    city: "agra",
+    pricePerNight: 3800, 
+    nearMetro: false, 
+    rating: 4.6,
+    amenities: ["WiFi", "Breakfast", "Restaurant", "Rooftop View"],
+    image: "https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80" 
+  },
+  { 
+    name: "Bangalore Tech Hub Stay", 
+    city: "bangalore",
+    pricePerNight: 2900, 
+    nearMetro: true, 
+    rating: 4.1,
+    amenities: ["WiFi", "Breakfast", "Gym", "Coworking Space"],
+    image: "https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=800&q=80" 
+  },
+  { 
+    name: "Hyderabad Nizam Palace", 
+    city: "hyderabad",
+    pricePerNight: 4800, 
+    nearMetro: true, 
+    rating: 4.4,
+    amenities: ["WiFi", "Breakfast", "Pool", "Restaurant", "Spa"],
+    image: "https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=800&q=80" 
   }
 ];
 
 
-export const activities = [
+export let activities = [
   // MUMBAI
   { 
     name: "Gateway of India & Colaba Tour", 
@@ -451,11 +494,9 @@ export const activities = [
     description: "Taj Mahal illuminated in soft evening light"
   }
 ];
-for(const activity of activities) {
-  const combinedText=`${activity.name} ${activity.description} ${activity.tags.join(" ")} ${activity.moods ? activity.moods.join(" ") : ""}`;
-  let curr_embedding=await getEmbedding(combinedText);
-  activity.embedding=curr_embedding;
-}
+
+
+
 
 // Destination metadata for future scaling
 export const destinations = {

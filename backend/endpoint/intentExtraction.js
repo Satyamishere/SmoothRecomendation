@@ -1,6 +1,6 @@
 import Groq from "groq-sdk";
 import dotenv from 'dotenv';
-import { getEmbedding } from "../oneTimeCallFunctions/getembedding";
+import { getEmbedding } from "../oneTimeCallFunctions/getembedding.js";
 
 dotenv.config();
 
@@ -20,8 +20,9 @@ export async function extractIntent(req, res, next) {
     return res.status(400).json({ error: "Missing 'text' in request body" });
   }
 
-  console.log(`Extracting intent from: "${text}"`);
+  //console.log(`Extracting intent from: "${text}"`);
   // this part has prompt  for intent extraction
+  console.log("before prompt");
   const prompt = `
 You are a smart travel assistant. Extract travel intent from the user's natural language query.
 
@@ -232,7 +233,7 @@ Return ONLY valid JSON.
 
 
 
-      console.log(`Extracted Intent:`, JSON.stringify(intent, null, 2));
+      //console.log(`Extracted Intent:`, JSON.stringify(intent, null, 2));
 
       req.body = intent;
       return next();
