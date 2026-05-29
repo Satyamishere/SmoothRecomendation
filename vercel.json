@@ -1,13 +1,19 @@
 {
   "version": 2,
+  "builds": [
+    {
+      "src": "backend/index.js",
+      "use": "@vercel/node"
+    }
+  ],
   "rewrites": [
     {
       "source": "/getHolidayOptions",
-      "destination": "/backend/index.js"
+      "destination": "backend/index.js"
     },
     {
       "source": "/(.*)",
-      "destination": "/front-end/$1"
+      "destination": "front-end/$1"
     }
   ]
 }
