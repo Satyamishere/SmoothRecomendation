@@ -6,13 +6,9 @@ dotenv.config();
 const duffelConfig = {
   apiKey: process.env.DUFFEL_API_KEY,
   baseUrl: process.env.DUFFEL_BASE_URL || "https://api.duffel.com",
-  version: process.env.DUFFEL_VERSION || "v2" // updated default version
+  version: process.env.DUFFEL_VERSION || "v2"
 };
 
-/**
- * Duffel does NOT require login step like TBO.
- * But we keep this function to match your structure.
- */
 async function login() {
   if (!duffelConfig.apiKey) {
     throw new Error("Missing DUFFEL_API_KEY in .env");
@@ -20,9 +16,6 @@ async function login() {
   return duffelConfig.apiKey;
 }
 
-/**
- * Normalize Duffel flight response
- */
 function normalizeFlights(rawOffers) {
   const results = [];
 
@@ -49,23 +42,14 @@ function normalizeFlights(rawOffers) {
   return results;
 }
 
-/**
- * SEARCH FLIGHTS (Duffel Version)
- */
 async function searchFlights(intent) {
-  console.log('🔎 searchFlights called with intent', intent);
-
   if (!intent?.origin || !intent?.destination) {
-    console.warn('Missing origin or destination in intent. Returning empty array to trigger fallback.');
-    // The caller (getUnifiedResult) will detect an empty response and
-    // replace it with mock data, allowing the pipeline to continue.
     return [];
   }
 
   if (!intent.departure_date) {
     const today = new Date();
     intent.departure_date = today.toISOString().split('T')[0];
-    console.log(`📅 No date provided. Using today: ${intent.departure_date}`);
   }
 
   const apiKey = await login();
@@ -84,8 +68,6 @@ async function searchFlights(intent) {
     }
   };
 
-  console.log('📤 Duffel search payload:', JSON.stringify(payload, null, 2));
-
   try {
     const resp = await axios.post(
       `${duffelConfig.baseUrl}/air/offer_requests`,
@@ -100,26 +82,10 @@ async function searchFlights(intent) {
     );
 
     const offers = resp.data?.data?.offers || [];
-
-    // debug: log summary of raw offers (airline, price, departure)
-    console.log('📥 raw Duffel offers summary:');
-    offers.forEach((o, idx) => {
-      const slice = o?.slices?.[0];
-      const seg = slice?.segments?.[0] || {};
-      console.log(`  [${idx}] airline:${o.owner?.name || ''} price:${o.total_amount} depart:${seg.departing_at || ''}`);
-    });
-
     const normalized = normalizeFlights(offers);
-
-    console.log('📤 normalized Duffel flights:');
-    normalized.forEach((f, idx) => {
-      console.log(`  [${idx}] airline:${f.airline} price:${f.price} time:${f.time} stops:${f.stops}`);
-    });
-    console.log(`✅ ${normalized.length} flights fetched from Duffel`);
     return normalized;
 
   } catch (err) {
-    console.error("❌ Duffel Search Failed:", err.response?.data || err.message);
     return [];
   }
 }

@@ -155,6 +155,7 @@ function computeConnectivityScore(hotel, connectivity) {
 export async function getUnifiedResult(req, res) {
 
   const intent = req.body;
+  console.log("you have reached till this line 158");
 
   if (!intent) {
     return res.status(400).json({
@@ -283,7 +284,7 @@ export async function getUnifiedResult(req, res) {
         destinationActivities.map(x => x.activity);
 
 
-
+      console.log("reached line 287")
       const activityCost =
         matchedActivities.reduce(
           (sum, act) => sum + act.price,
@@ -328,7 +329,7 @@ export async function getUnifiedResult(req, res) {
           hotel,
           intent.connectivity
         );
-
+        console.log("reached line 322")
       // embedding-based activity score
       let activityScore = 50;
 
@@ -401,7 +402,7 @@ export async function getUnifiedResult(req, res) {
     }
   }
 
-
+console.log("reached line 405")
   results.sort((a, b) => b.score - a.score);
 
   // ensurig diversity in top results by limiting to max 2 trips per destination
