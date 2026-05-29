@@ -233,17 +233,20 @@ export async function getUnifiedResult(req, res) {
   for (const flight of flights) {
 
     for (const hotel of hotels) {
-
+      let destinationList = [];
 
       if (intent.destination) {
+        destinationList = intent.destination
+          .toLowerCase()
+          .split(/\s+or\s+|\s+and\s+|,/)
+          .map(x => x.trim())
+          .filter(x => x.length > 0);
+      }
 
-        if (
-          hotel.city.toLowerCase() !==
-          intent.destination.toLowerCase()
-        ) {
+      if (destinationList.length > 0) {
+        if (!destinationList.includes(hotel.city.toLowerCase())) {
           continue;
         }
-
       } else {
 
         if (
@@ -289,7 +292,7 @@ export async function getUnifiedResult(req, res) {
 
       totalCost += activityCost;
 
-        // hard constraints check - if any hard constraint is violated, skip this option
+      // hard constraints check - if any hard constraint is violated, skip this option
 
       if (
         intent.budget?.constraint_type === "hard" &&
