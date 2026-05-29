@@ -1,5 +1,5 @@
 // mockData/mockdata.js
-
+import { getEmbedding } from "../oneTimeCallFunctions/getembedding";
 export const flights = [
   { 
     airline: "IndiGo", 
@@ -88,6 +88,7 @@ export const hotels = [
     image: "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=800&q=80" 
   }
 ];
+
 
 export const activities = [
   // MUMBAI
@@ -450,6 +451,11 @@ export const activities = [
     description: "Taj Mahal illuminated in soft evening light"
   }
 ];
+for(const activity of activities) {
+  const combinedText=`${activity.name} ${activity.description} ${activity.tags.join(" ")} ${activity.moods ? activity.moods.join(" ") : ""}`;
+  let curr_embedding=await getEmbedding(combinedText);
+  activity.embedding=curr_embedding;
+}
 
 // Destination metadata for future scaling
 export const destinations = {

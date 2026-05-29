@@ -2,17 +2,45 @@
 import { hotels, activities, flights as mockFlights } from '../mockData/mockdata.js';
 import { searchFlights } from '../services/tektravelsService.js';
 
-/**
- * STEP 1: Compute normalized weights from user intent
- * Maps constraint types to priorities and normalizes them
+
+
+/*
+   STEP 1: Compute normalized weights from user intent
+  Maps constraint types to priorities and normalizes them
  */
+
+function CosineSimilarity(A, B) {
+  let sumofsquaresA = 0;
+  let sumofsquaresB = 0;
+  let dotProduct = 0;
+  for (let i = 0; i < A.length; i++) {
+    dotProduct += A[i] * B[i];
+    sumofsquaresA += A[i] * A[i];
+    sumofsquaresB += B[i] * B[i];
+  }
+  const magnitudeA = Math.sqrt(sumofsquaresA);
+  const magnitudeB = Math.sqrt(sumofsquaresB);
+  if (magnitudeA === 0 || magnitudeB === 0) {
+    console.log("line 24  sum squares of A or B is zero");
+    return 0;
+  }
+  return dotProduct / (magnitudeA * magnitudeB);
+}
+
+
+
+
+
+
+
+
 function computeWeights(intent) {
   const priorities = {
     budget: 0,
     connectivity: 0,
     activity: 0,
-    flight: 1, // Default priority for flight
-    hotel: 1   // Default priority for hotel
+    flight: 1,
+    hotel: 1
   };
 
   // Map constraint types to priority values
@@ -41,6 +69,22 @@ function computeWeights(intent) {
     priorities.activity = maxInterestPriority;
   }
 
+
+
+  // we have calculated and sorted interests based on similarity to user interests and moods
+  let ranking_of_activities_similarity = [];
+  for (const activity of activities) {
+    const similarity = CosineSimilarity(activity.embedding, intent.interests_embedding);
+    ranking_of_activities_similarity.push({ activity, similarity });
+  }
+  ranking_of_activities_similarity.sort((a, b) => {
+    b.similarity - a.similarity
+  });
+  let filtered_activities=ranking_of_activities_similarity.slice(0,3);
+  let valid_destinations=new Set(filtered_activities.map(a=>a.activity.location));
+
+
+
   // Calculate total priority
   const totalPriority = Object.values(priorities).reduce((sum, p) => sum + p, 0);
 
@@ -67,19 +111,21 @@ function computeWeights(intent) {
     };
   }
 
+  /*
   console.log("Computed weights:", {
     priorities,
     totalPriority,
     weights,
     sum: Object.values(weights).reduce((sum, w) => sum + w, 0)
   });
+  */
 
   return weights;
 }
 
-/**
- * STEP 2: Compute budget score (0-100 scale)
- */
+
+ // Compute budget score (0-100 scale)
+ 
 function computeBudgetScore(totalCost, maxBudget) {
   if (!maxBudget) {
     return 50; // Neutral score if no budget specified
@@ -89,9 +135,7 @@ function computeBudgetScore(totalCost, maxBudget) {
   return Math.max(0, Math.min(100, budgetScore)); // Clamp to 0-100
 }
 
-/**
- * STEP 2: Compute flight score (0-100 scale)
- */
+//Compute flight score (0-100 scale)
 function computeFlightScore(flight) {
   let score = 0;
 
@@ -116,9 +160,9 @@ function computeFlightScore(flight) {
   return Math.max(0, Math.min(100, score)); // Clamp to 0-100
 }
 
-/**
- * STEP 2: Compute hotel score (0-100 scale)
- */
+
+// Compute hotel score (0-100 scale)
+ 
 function computeHotelScore(hotel) {
   const score = (hotel.rating / 5) * 100;
   return Math.max(0, Math.min(100, score)); // Clamp to 0-100
@@ -173,10 +217,10 @@ export async function getUnifiedResult(req, res) {
 
   // Default duration if NLP fails to extract it
   const duration = intent.duration_days || 3;
-  
+
   console.log("Processing intent:", JSON.stringify(intent, null, 2));
 
-  // STEP 1: Compute normalized weights from intent
+  // Compute normalized weights from intent
   const weights = computeWeights(intent);
 
   // fetch flights from TekTravels (with fallback to mock data)
@@ -194,15 +238,25 @@ export async function getUnifiedResult(req, res) {
   // STEP 2: Generate all possible trip combinations
   for (const flight of flights) {
     for (const hotel of hotels) {
-      
+      if(intent.destination){
+        if(hotel.location.toLowerCase()!==intent.destination.toLowerCase()){
+          continue; 
+        }
+      }
+      else{
+        if(filtered_activities.length>0 && filtered_activities.has(hotel.location.toLowerCase())===false){
+          continue; 
+        }
+      }
+
       // Calculate base cost: flight + (hotel * nights)
       const hotelCost = hotel.pricePerNight * duration;
       let totalCost = flight.price + hotelCost;
-      
+
       // Match activities based on user interests AND destination
       let matchedActivities = [];
       let activityCost = 0;
-      
+
       // Normalize destination input. Many users supply airport codes (BOM, DEL)
       // while our activities list uses city names. Map common IATA codes to
       // the city used in our mock data, otherwise fall back to the raw value.
@@ -233,7 +287,7 @@ export async function getUnifiedResult(req, res) {
       }
 
       // Filter activities for the destination first
-      let destinationActivities = destination 
+      let destinationActivities = destination
         ? activities.filter(act => act.location === destination)
         : activities;
       // incorporate mood into interest matching (always include if present)
@@ -250,13 +304,13 @@ export async function getUnifiedResult(req, res) {
         }
       }
       // when filtering activities below, we'll use allInterests instead of intent.interests
-      
+
       if (allInterests.length > 0) {
         // Find activities that match user's interests/mood AND destination
-        matchedActivities = destinationActivities.filter(activity => 
+        matchedActivities = destinationActivities.filter(activity =>
           allInterests.some(userInterest => {
             const interestLower = userInterest.type.toLowerCase();
-            const tagMatch = activity.tags.some(tag => 
+            const tagMatch = activity.tags.some(tag =>
               tag.toLowerCase().includes(interestLower) ||
               interestLower.includes(tag.toLowerCase())
             );
@@ -270,15 +324,15 @@ export async function getUnifiedResult(req, res) {
             return tagMatch || moodMatch;
           })
         );
-        
+
         // If no matches found in destination, include 2 default activities from that destination
         if (matchedActivities.length === 0) {
           matchedActivities = destinationActivities.slice(0, 2);
         }
-        
+
         // Limit to top 3 activities to keep cost reasonable
         matchedActivities = matchedActivities.slice(0, 3);
-        
+
         // Add activity costs to total
         activityCost = matchedActivities.reduce((sum, act) => sum + act.price, 0);
         totalCost += activityCost;
@@ -288,24 +342,24 @@ export async function getUnifiedResult(req, res) {
         activityCost = matchedActivities.reduce((sum, act) => sum + act.price, 0);
         totalCost += activityCost;
       }
-      
+
       console.log(`Destination: ${destination} | Activities found: ${matchedActivities.map(a => a.name).join(', ')}`);
-      
-      
+
+
       // STEP 3: Apply HARD constraints (filter out violating options)
       // Hard constraint filtering happens BEFORE scoring
       if (
-        intent.budget?.constraint_type === "hard" && 
-        intent.budget?.max && 
+        intent.budget?.constraint_type === "hard" &&
+        intent.budget?.max &&
         totalCost > intent.budget.max
       ) {
         console.log(`Filtered out: ${flight.airline} + ${hotel.name} (₹${totalCost} > ₹${intent.budget.max})`);
         continue; // Skip this combination - exceeds hard budget
       }
 
-      if (intent.connectivity?.constraint_type === "hard" && 
-          intent.connectivity?.value === "nearMetro" && 
-          !hotel.nearMetro) {
+      if (intent.connectivity?.constraint_type === "hard" &&
+        intent.connectivity?.value === "nearMetro" &&
+        !hotel.nearMetro) {
         console.log(`Filtered out: ${hotel.name} - no metro access (hard constraint)`);
         continue; // Skip this combination - violates hard connectivity constraint
       }
@@ -318,7 +372,7 @@ export async function getUnifiedResult(req, res) {
       const activityScore = computeActivityScore(matchedActivities, allInterests);
 
       // STEP 5: Compute final weighted score
-      const finalScore = 
+      const finalScore =
         weights.budget * budgetScore +
         weights.flight * flightScore +
         weights.hotel * hotelScore +
@@ -340,7 +394,7 @@ export async function getUnifiedResult(req, res) {
           counts[a.location] = (counts[a.location] || 0) + 1;
         });
         inferredDest = Object.entries(counts)
-          .sort(([,a],[,b]) => b - a)[0]?.[0];
+          .sort(([, a], [, b]) => b - a)[0]?.[0];
       } else {
         inferredDest = "Your Destination";
       }
@@ -392,13 +446,13 @@ export async function getUnifiedResult(req, res) {
   results.sort((a, b) => b.score - a.score);
 
   console.log(`\nGenerated ${results.length} trip options`);
-  console.log(`Score range: ${results[results.length-1]?.score} - ${results[0]?.score}`);
+  console.log(`Score range: ${results[results.length - 1]?.score} - ${results[0]?.score}`);
   console.log(`Top 5 scores: ${results.slice(0, 5).map(r => `${r.score}%`).join(', ')}`);
 
   // Return top 6 recommendations
   const topResults = results.slice(0, 6);
 
-  res.json({ 
+  res.json({
     status: 200,
     query: {
       destination: intent.destination,

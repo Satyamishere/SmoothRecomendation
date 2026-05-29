@@ -1,5 +1,6 @@
 import Groq from "groq-sdk";
 import dotenv from 'dotenv';
+import { getEmbedding } from "../oneTimeCallFunctions/getembedding";
 
 dotenv.config();
 
@@ -14,13 +15,13 @@ const WORKING_MODELS = [
 
 export async function extractIntent(req, res, next) {
   const text = req.body?.text;
-  
+
   if (!text) {
     return res.status(400).json({ error: "Missing 'text' in request body" });
   }
 
   console.log(`Extracting intent from: "${text}"`);
-
+  // this part has prompt  for intent extraction
   const prompt = `
 You are a smart travel assistant. Extract travel intent from the user's natural language query.
 
@@ -86,13 +87,13 @@ Return ONLY valid JSON.
     // we will later add mood detection post-processing using textLower
     try {
       console.log(`Trying model: ${model}`);
-      
+
       const response = await groq.chat.completions.create({
         model: model,
         messages: [
-          { 
-            role: "system", 
-            content: "You are a travel intent extraction AI. Return ONLY valid JSON. No explanations, no markdown." 
+          {
+            role: "system",
+            content: "You are a travel intent extraction AI. Return ONLY valid JSON. No explanations, no markdown."
           },
           { role: "user", content: prompt }
         ],
@@ -102,19 +103,19 @@ Return ONLY valid JSON.
       });
 
       const generated = response.choices[0].message.content;
-      
+
       // Parse the JSON
       let jsonStr = generated.trim();
-      
+
       // Clean markdown if present
       if (jsonStr.includes('```json')) {
         jsonStr = jsonStr.split('```json')[1].split('```')[0].trim();
       } else if (jsonStr.includes('```')) {
         jsonStr = jsonStr.split('```')[1].split('```')[0].trim();
       }
-      
+
       const intent = JSON.parse(jsonStr);
-      
+
       // make lowercase copy early for any text checks
       const textLower = text.toLowerCase();
 
@@ -130,7 +131,7 @@ Return ONLY valid JSON.
           return item;
         });
       }
-      
+
       // Set defaults for missing fields
       if (!intent.budget) intent.budget = { max: null, constraint_type: null };
       if (!intent.connectivity) intent.connectivity = { value: null, constraint_type: null };
@@ -143,34 +144,41 @@ Return ONLY valid JSON.
         intent.mood = 'celebration';
         // set a party/celebration interest for backward compatibility
         intent.interests.push({ type: 'celebration', constraint_type: 'soft' });
-      }
-      // additional basic mood keywords
-      const moodMap = {
-        relax: 'relaxation',
-        relaxed: 'relaxation',
-        relaxation: 'relaxation',
-        chill: 'relaxation',
-        peaceful: 'peaceful',
-        nature: 'nature',
-        adventurous: 'adventure',
-        adventure: 'adventure',
-        thrill: 'adventure',
-        romantic: 'romantic',
-        celebration: 'celebration',
-        party: 'celebration',
-        promotion: 'celebration',
-        culture: 'culture',
-        history: 'culture',
-        exposure: 'culture',
-        spiritual: 'spiritual',
-        religious: 'spiritual'
-      };
-      for (const key of Object.keys(moodMap)) {
-        if (textLower.includes(key) && !intent.mood) {
-          intent.mood = moodMap[key];
-          break;
+
+        // additional basic mood keywords
+        const moodMap = {
+          relax: 'relaxation',
+          relaxed: 'relaxation',
+          relaxation: 'relaxation',
+          chill: 'relaxation',
+          peaceful: 'peaceful',
+          nature: 'nature',
+          adventurous: 'adventure',
+          adventure: 'adventure',
+          thrill: 'adventure',
+          romantic: 'romantic',
+          celebration: 'celebration',
+          party: 'celebration',
+          promotion: 'celebration',
+          culture: 'culture',
+          history: 'culture',
+          exposure: 'culture',
+          spiritual: 'spiritual',
+          religious: 'spiritual'
+        };
+        for (const key of Object.keys(moodMap)) {
+          if (textLower.includes(key) && !intent.mood) {
+            intent.mood = moodMap[key];
+            break;
+          }
         }
       }
+      const embeddingInput = `
+      ${text}
+      ${intent.mood || ""}
+      ${intent.interests.map(interests => interests.type).join(" ")}
+      `;
+      intent.interests_embedding = await getEmbedding(embeddingInput);
 
       // simple regex to capture origin city and departure date
       const fromMatch = textLower.match(/from\s+([A-Za-z]+)/i);
@@ -179,17 +187,17 @@ Return ONLY valid JSON.
       if (toMatch) intent.destination = toMatch[1]; // override if NLP missed
       // drop nonsensical destinations that are just filler words
       if (intent.destination) {
-        const bad = ['visit','place','somewhere','destination','anywhere'];
+        const bad = ['visit', 'place', 'somewhere', 'destination', 'anywhere'];
         if (bad.includes(intent.destination.toLowerCase())) {
           intent.destination = null;
         }
       }
-      
+
       // map common city names to IATA codes and uppercase everything
       const iataMap = {
         delhi: 'DEL',
         mumbai: 'BOM',
-        mumbay: 'BOM',            // common misspelling
+        mumbay: 'BOM',
         bangalore: 'BLR',
         bengaluru: 'BLR',
         chennai: 'MAA',
@@ -214,14 +222,21 @@ Return ONLY valid JSON.
         const monthName = dateMatch[2];
         const monthIndex = new Date(`${monthName} 1, 2000`).getMonth() + 1;
         const year = new Date().getFullYear();
-        intent.departure_date = `${year}-${monthIndex.toString().padStart(2,'0')}-${day}`;
+        intent.departure_date = `${year}-${monthIndex.toString().padStart(2, '0')}-${day}`;
       }
-      
+
+
+
+
+
+
+
+
       console.log(`Extracted Intent:`, JSON.stringify(intent, null, 2));
-      
+
       req.body = intent;
       return next();
-      
+
     } catch (err) {
       console.log(`${model} failed:`, err.message);
     }
