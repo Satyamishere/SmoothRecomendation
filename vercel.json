@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/getHolidayOptions",
+      "destination": "/backend/index.js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/front-end/$1"
+    }
+  ]
+}

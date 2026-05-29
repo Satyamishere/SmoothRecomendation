@@ -9,7 +9,7 @@ function App() {
   const [error, setError] = useState('');
 
   // base URL for backend; Vite exposes env vars prefixed with VITE_
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const API_URL = process.env.NODE_ENV === 'production' ? '': 'http://localhost:5000';
 
   const handleSearch = async () => {
     if (!query.trim()) return;
