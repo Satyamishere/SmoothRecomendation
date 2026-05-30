@@ -114,7 +114,7 @@ export const hotels = [
   },
   { 
     name: "Bangalore Tech Hub Stay", 
-    city: "bangalore",
+    city: "banglore",
     pricePerNight: 2900, 
     nearMetro: true, 
     rating: 4.1,
@@ -479,7 +479,7 @@ export let activities = [
   },
   { 
     name: "Agra Fort Heritage Tour", 
-    location: "agra",
+    location: "agra", 
     tags: ["history", "sightseeing", "culture"], 
     price: 500,
     duration: "2.5 hours",

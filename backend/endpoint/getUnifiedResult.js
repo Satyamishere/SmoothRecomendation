@@ -163,6 +163,7 @@ export async function getUnifiedResult(req, res) {
       error: "Empty intent in request body."
     });
   }
+  //console.log(intent);
 
 
   let ranking_of_activities_similarity = [];
@@ -243,10 +244,14 @@ export async function getUnifiedResult(req, res) {
           .map(x => x.trim())
           .filter(x => x.length > 0);
       }
+      console.log("destinationList =", destinationList);
+      console.log("hotel.city =", hotel.city.toLowerCase());
 
       if (destinationList.length > 0) {
         if (!destinationList.includes(hotel.city.toLowerCase())) {
+          
           continue;
+          console.log("line 252:found something valid")
         }
       } else {
 
@@ -329,7 +334,7 @@ export async function getUnifiedResult(req, res) {
           hotel,
           intent.connectivity
         );
-        console.log("reached line 322")
+      console.log("reached line 322")
       // embedding-based activity score
       let activityScore = 50;
 
@@ -402,7 +407,7 @@ export async function getUnifiedResult(req, res) {
     }
   }
 
-console.log("reached line 405")
+  console.log("reached line 405")
   results.sort((a, b) => b.score - a.score);
 
   // ensurig diversity in top results by limiting to max 2 trips per destination

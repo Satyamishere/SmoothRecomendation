@@ -12,7 +12,7 @@ app.use(express.json());
 
 // FIXED FOR SECURITY & CORS
 app.use(cors({
-    origin: 'https://your-frontend-app.vercel.app', // Replace with your actual Vercel URL later
+    origin: true,
     credentials: true
 }));
 
